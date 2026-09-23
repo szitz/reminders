@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#008069" />
+<title>Reminders</title>
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<style>
+  :root{
+    --bg:#efeae2; --header:#008069; --composer:#f0f2f5;
+    --bubble:#ffffff; --bubble-timed:#ffffff; --input:#ffffff;
+    --green:#008069; --green-send:#008069; --red:#e5556e;
+    --text:#111b21; --text-dim:#667781; --divider:#e9edef;
+    --tick:#008069; --header-text:#ffffff;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%; margin:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex; flex-direction:column;
+    height:100dvh; overflow:hidden;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+
+  /* Header */
+  header{
+    background:var(--header); display:flex; align-items:center; gap:12px;
+    padding:10px 14px; flex:0 0 auto; box-shadow:0 1px 0 rgba(0,0,0,.2);
+  }
+  .avatar{width:40px;height:40px;border-radius:50%;background:var(--green);
+    display:flex;align-items:center;justify-content:center;font-weight:600;color:#03211a;flex:0 0 auto;}
+  .htitle{flex:1;min-width:0;}
+  .htitle b{font-size:16px;font-weight:600;display:block;}
+  .htitle span{font-size:12px;color:var(--text-dim);}
+  .hbtn{background:none;border:none;color:var(--text-dim);padding:8px;cursor:pointer;border-radius:50%;}
+  .hbtn:active{background:rgba(255,255,255,.08);}
+  .hbtn svg{width:22px;height:22px;display:block;fill:currentColor;}
+  /* light-mode header: white text/icons on green, white avatar */
+  header .htitle b{color:var(--header-text);}
+  header .htitle span{color:rgba(255,255,255,.85);}
+  header .hbtn{color:var(--header-text);}
+  header .avatar{background:#ffffff;color:var(--green);}
+
+  /* Chat / list */
+  main{
+    flex:1 1 auto; overflow-y:auto; padding:12px 10px 6px;
+    background-color:var(--bg);
+    background-image:radial-gradient(rgba(0,0,0,.04) 1px, transparent 1px);
+    background-size:22px 22px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .section-chip{align-self:center;background:#ffffff;color:#54656f;box-shadow:0 1px 1px rgba(0,0,0,.08);
+    font-size:11px;padding:4px 12px;border-radius:10px;margin:6px 0 2px;letter-spacing:.3px;}
+  .bubble{
+    max-width:82%; align-self:flex-start; background:var(--bubble);
+    border-radius:8px; border-top-left-radius:0; padding:8px 10px 6px;
+    box-shadow:0 1px .5px rgba(0,0,0,.25); position:relative;
+    animation:pop .18s ease; word-wrap:break-word;
+  }
+  .bubble.timed{background:var(--bubble-timed);border-left:3px solid var(--green);}
+  .bubble .txt{font-size:15px;line-height:1.35;white-space:pre-wrap;}
+  .bubble .meta{display:flex;align-items:center;gap:6px;justify-content:flex-end;
+    margin-top:3px;font-size:11px;color:var(--text-dim);}
+  .bubble .due{color:var(--green);font-weight:600;display:flex;align-items:center;gap:3px;}
+  .bubble .due svg{width:12px;height:12px;fill:currentColor;}
+  .bubble .tick{
+    background:none;border:none;color:var(--text-dim);padding:4px;margin:-4px -4px -4px 4px;
+    cursor:pointer;border-radius:50%;flex:0 0 auto;
+  }
+  .bubble .tick:active{background:rgba(255,255,255,.1);}
+  .bubble .tick svg{width:18px;height:18px;fill:none;stroke:var(--text-dim);stroke-width:2.4;
+    stroke-linecap:round;stroke-linejoin:round;}
+  .bubble.done .tick svg{stroke:var(--tick);}
+  .bubble.leaving{animation:leave .28s ease forwards;}
+  .empty{margin:auto;color:var(--text-dim);text-align:center;font-size:14px;padding:24px;}
+  .empty svg{width:54px;height:54px;fill:#cfd6da;display:block;margin:0 auto 10px;}
+
+  @keyframes pop{from{opacity:0;transform:translateY(6px) scale(.98);}to{opacity:1;}}
+  @keyframes leave{to{opacity:0;transform:translateX(40px) scale(.9);height:0;margin:0;padding-top:0;padding-bottom:0;}}
+
+  /* Composer */
+  footer{flex:0 0 auto;background:var(--composer);padding:8px 8px calc(8px + env(safe-area-inset-bottom));}
+  .composer{display:flex;align-items:flex-end;gap:8px;}
+  .inputwrap{flex:1;background:var(--input);border-radius:24px;display:flex;align-items:center;
+    padding:6px 6px 6px 14px;min-height:46px;}
+  #field{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:16px;
+    resize:none;max-height:120px;line-height:1.35;font-family:inherit;padding:5px 0;}
+  #field::placeholder{color:var(--text-dim);}
+  .circle{width:46px;height:46px;border-radius:50%;background:var(--green);border:none;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;cursor:pointer;}
+  .circle:active{filter:brightness(.9);}
+  .circle svg{width:24px;height:24px;fill:#fff;}
+  .buckets{display:flex;gap:8px;padding:0 4px 8px;}
+  .chip{background:#ffffff;color:#3b4a54;border:1px solid #d1d7db;border-radius:16px;
+    padding:6px 15px;font-size:13px;cursor:pointer;font-family:inherit;}
+  .chip.selected{background:var(--green);color:#fff;border-color:var(--green);font-weight:600;}
+  .chip:active{filter:brightness(.95);}
+
+  /* Recording state */
+  .composer.recording .inputwrap{background:var(--input);}
+  .rec-row{flex:1;display:flex;align-items:center;gap:12px;padding:0 6px;}
+  .rec-dot{width:12px;height:12px;border-radius:50%;background:var(--red);animation:blink 1s infinite;}
+  @keyframes blink{50%{opacity:.25;}}
+  .rec-time{font-variant-numeric:tabular-nums;font-size:16px;color:var(--text);}
+  .rec-hint{color:var(--text-dim);font-size:13px;margin-left:auto;}
+  .trash{background:none;border:none;color:var(--red);padding:10px;cursor:pointer;flex:0 0 auto;}
+  .trash svg{width:24px;height:24px;fill:currentColor;}
+  .hidden{display:none !important;}
+
+  /* History drawer */
+  .drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;
+    transition:opacity .2s;z-index:20;}
+  .drawer-bg.open{opacity:1;pointer-events:auto;}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(88%,420px);background:var(--bg);
+    transform:translateX(100%);transition:transform .25s ease;z-index:21;display:flex;flex-direction:column;
+    padding-top:env(safe-area-inset-top);}
+  .drawer.open{transform:none;}
+  .drawer header{background:var(--header);}
+  .drawer main{padding:12px 10px;}
+  .hist-item{background:var(--bubble);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:14px;}
+  .hist-item .txt{color:var(--text-dim);}
+  .hist-item .when{font-size:11px;color:#5a6b74;margin-top:3px;}
+
+  /* Toast */
+  #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#2a3942;
+    color:var(--text);padding:10px 16px;border-radius:20px;font-size:13px;z-index:30;
+    opacity:0;transition:opacity .2s;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.4);max-width:90%;text-align:center;}
+  #toast.show{opacity:1;}
+
+  /* tiny gate */
+  #gate{position:fixed;inset:0;background:var(--bg);z-index:40;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;padding:24px;}
+  #gate input{background:var(--input);border:none;color:var(--text);padding:14px 16px;border-radius:10px;
+    font-size:16px;width:min(320px,100%);outline:none;}
+  #gate button{background:var(--green);color:#fff;border:none;padding:14px 24px;border-radius:10px;font-size:16px;cursor:pointer;}
+  #gate .logo{width:64px;height:64px;}
+</style>
+</head>
+<body>
+
+<!-- Optional password gate (only shown when Supabase auth is configured) -->
+<div id="gate" class="hidden">
+  <img class="logo" src="./icon-192.png" alt="" />
+  <div style="font-size:15px;color:var(--text-dim)">Enter the shared password</div>
+  <input id="gate-pass" type="password" placeholder="Password" autocomplete="current-password" />
+  <button id="gate-go">Open</button>
+  <div id="gate-msg" style="color:var(--red);font-size:13px;min-height:16px"></div>
+</div>
+
+<header>
+  <div class="avatar" id="avatar">R</div>
+  <div class="htitle"><b>Reminders</b><span id="subtitle">shared list</span></div>
+  <button class="hbtn" id="history-btn" aria-label="History">
+    <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 1 0 8.94 10H19.9A7 7 0 1 1 13 5v4l4-4-4-4v2zM12 8v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+  </button>
+</header>
+
+<main id="list">
+  <div class="empty" id="empty">
+    <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+    Nothing yet.<br>Type or record a reminder below.
+  </div>
+</main>
+
+<footer>
+  <div class="buckets" id="buckets">
+    <button class="chip selected" data-bucket="untimed">Untimed</button>
+    <button class="chip" data-bucket="home">Home</button>
+    <button class="chip" data-bucket="chabad">Chabad</button>
+  </div>
+  <div class="composer" id="composer">
+    <div class="inputwrap" id="inputwrap">
+      <textarea id="field" rows="1" placeholder="Type a reminder" enterkeyhint="send"></textarea>
+    </div>
+    <!-- recording view (hidden by default) -->
+    <div class="inputwrap rec-row hidden" id="recwrap">
+      <button class="trash" id="rec-cancel" aria-label="Cancel"><svg viewBox="0 0 24 24"><path d="M6 7h12l-1 14H7L6 7zm9-3l1 1h4v2H4V5h4l1-1h6z"/></svg></button>
+      <span class="rec-dot"></span>
+      <span class="rec-time" id="rec-time">0:00</span>
+      <span class="rec-hint" id="rec-hint">recording…</span>
+    </div>
+    <button class="circle" id="mainbtn" aria-label="Record">
+      <!-- mic (default) -->
+      <svg id="ic-mic" viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg>
+      <!-- send (hidden) -->
+      <svg id="ic-send" class="hidden" viewBox="0 0 24 24"><path d="M3 20.5L21 12 3 3.5 3 10l13 2-13 2z"/></svg>
+    </button>
+  </div>
+</footer>
+
+<!-- History drawer -->
+<div class="drawer-bg" id="drawer-bg"></div>
+<aside class="drawer" id="drawer">
+  <header>
+    <button class="hbtn" id="drawer-close" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></svg>
+    </button>
+    <div class="htitle"><b>Done — last 30 days</b></div>
+  </header>
+  <main id="hist"></main>
+</aside>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   CONFIG  —  fill these in after you create your Supabase project
+   Leave SUPABASE_URL empty to run in local-only mode (single device).
+   ============================================================ */
+const CONFIG = {
+  SUPABASE_URL: "",            // e.g. https://xxxx.supabase.co
+  SUPABASE_ANON_KEY: "",       // your anon/public key (safe to expose; RLS protects data)
+  TRANSCRIBE_URL: "",          // e.g. https://xxxx.supabase.co/functions/v1/transcribe  (Whisper via Edge Function)
+  USE_PASSWORD_GATE: false,    // set true once you set a shared Supabase Auth account
+  SHARED_EMAIL: "",            // the one shared account's email (used with the gate)
+  CALENDAR_SYNC_URL: ""        // e.g. https://xxxx.supabase.co/functions/v1/sync-calendar
+                               // timed reminders become Google Calendar events (30-min + at-time alerts)
+};
+
+/* ---------- tiny helpers ---------- */
+const $ = s => document.querySelector(s);
+const listEl=$("#list"), emptyEl=$("#empty");
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2600);}
+function fmtDue(d){
+  const now=new Date(), due=new Date(d);
+  const sameDay=due.toDateString()===now.toDateString();
+  const tomorrow=new Date(now);tomorrow.setDate(now.getDate()+1);
+  const isTom=due.toDateString()===tomorrow.toDateString();
+  const t=due.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+  if(sameDay) return t;
+  if(isTom) return "Tomorrow "+t;
+  return due.toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'})+" "+t;
+}
+
+/* ============================================================
+   NATURAL-LANGUAGE TIME PARSING (client-side, no cost)
+   Returns { text, dueAt(ISO|null) }
+   ============================================================ */
+function parseTime(raw){
+  let text = raw.trim().replace(/^(remind me to|reminder:|remind me|note:|todo:)\s*/i,"").trim();
+  const lower = " "+text.toLowerCase()+" ";
+  const now = new Date();
+  let due = null;
+
+  const setTime=(d,h,m)=>{d.setHours(h,m||0,0,0);return d;};
+  const base=()=>{const d=new Date(now);return d;};
+
+  // relative: "in 15 minutes", "in 2 hours"
+  let m = lower.match(/\bin (\d{1,3}) ?(min|mins|minute|minutes)\b/);
+  if(m){due=new Date(now.getTime()+parseInt(m[1])*60000);}
+  if(!due){m=lower.match(/\bin (\d{1,2}) ?(hr|hrs|hour|hours)\b/);
+    if(m){due=new Date(now.getTime()+parseInt(m[1])*3600000);}}
+
+  if(!due){
+    // explicit clock time: "at 3", "at 3pm", "3:30pm", "15:00", "by 9am"
+    let tm = lower.match(/\b(?:at|by|@)?\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
+    let hh=null,mm=0;
+    if(tm){hh=parseInt(tm[1]); mm=tm[2]?parseInt(tm[2]):0;
+      if(tm[3]==="pm"&&hh<12)hh+=12; if(tm[3]==="am"&&hh===12)hh=0;}
+    else{
+      tm=lower.match(/\b(\d{1,2}):(\d{2})\b/);
+      if(tm){hh=parseInt(tm[1]);mm=parseInt(tm[2]);}
+    }
+    // named times
+    if(hh===null){
+      if(/\bnoon\b/.test(lower)){hh=12;mm=0;}
+      else if(/\bmidnight\b/.test(lower)){hh=0;mm=0;}
+      else if(/\btonight\b/.test(lower)){hh=20;mm=0;}
+      else if(/\bthis morning\b/.test(lower)){hh=9;}
+      else if(/\bthis afternoon\b/.test(lower)){hh=15;}
+      else if(/\b(this )?evening\b/.test(lower)){hh=19;}
+    }
+
+    // day: today / tomorrow / weekday
+    let day=base();
+    let dayFound=false;
+    if(/\btomorrow\b/.test(lower)){day.setDate(day.getDate()+1);dayFound=true;}
+    else if(/\btoday\b|\btonight\b|\bthis (morning|afternoon|evening)\b/.test(lower)){dayFound=true;}
+    else{
+      const days=["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+      for(let i=0;i<7;i++){
+        const re=new RegExp("\\b(next )?"+days[i]+"\\b");
+        const dm=lower.match(re);
+        if(dm){
+          let delta=(i-day.getDay()+7)%7;
+          if(delta===0)delta=7;                 // "monday" = next monday if today is monday
+          if(dm[1]&&delta<=0)delta+=7;          // "next monday"
+          day.setDate(day.getDate()+delta);dayFound=true;break;
+        }
+      }
+    }
+
+    if(hh!==null){
+      due=setTime(day,hh,mm);
+      if(!dayFound && due < now){ due.setDate(due.getDate()+1); } // time already passed → tomorrow
+    } else if(dayFound){
+      due=setTime(day,9,0); // a day but no time → 9am default
+    }
+  }
+
+  return { text, dueAt: due? due.toISOString() : null };
+}
+
+/* ============================================================
+   STORAGE LAYER  —  Supabase if configured, else localStorage
+   Unified API: init, list, add, update(patch), subscribe(cb)
+   ============================================================ */
+let sb=null, useCloud=false;
+const LKEY="reminders_v1";
+const Store = {
+  async init(){
+    if(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY){
+      const {createClient}=window.supabase;
+      sb=createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+      useCloud=true;
+    }
+  },
+  async list(){
+    if(useCloud){
+      const {data,error}=await sb.from("reminders").select("*").order("created_at",{ascending:true});
+      if(error){console.error(error);return [];}
+      return data;
+    }
+    return JSON.parse(localStorage.getItem(LKEY)||"[]");
+  },
+  async add(r){
+    const rec={ text:r.text, due_at:r.dueAt||null, done:false, done_at:null,
+                google_event_id:null, created_at:new Date().toISOString() };
+    let saved;
+    if(useCloud){
+      const {data,error}=await sb.from("reminders").insert(rec).select().single();
+      if(error){console.error(error);toast("Save failed");return null;}
+      saved=data;
+    } else {
+      rec.id="l_"+Date.now()+Math.random().toString(36).slice(2,6);
+      const all=await this.list(); all.push(rec);
+      localStorage.setItem(LKEY,JSON.stringify(all));
+      saved=rec;
+    }
+    if(saved.due_at) syncCalendar(saved);   // fire-and-forget → Google Calendar
+    return saved;
+  },
+  async update(id,patch){
+    if(useCloud){
+      const {error}=await sb.from("reminders").update(patch).eq("id",id);
+      if(error)console.error(error);
+      return;
+    }
+    const all=await this.list();
+    const i=all.findIndex(x=>x.id===id);
+    if(i>=0){all[i]={...all[i],...patch};localStorage.setItem(LKEY,JSON.stringify(all));}
+  },
+  subscribe(cb){
+    if(!useCloud) return;
+    sb.channel("reminders-rt")
+      .on("postgres_changes",{event:"*",schema:"public",table:"reminders"},cb)
+      .subscribe();
+  }
+};
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+let cache=[];
+async function refresh(){
+  cache=await Store.list();
+  render();
+}
+function render(){
+  // clear (keep empty node reference)
+  [...listEl.querySelectorAll(".bubble,.section-chip")].forEach(n=>n.remove());
+  const active=cache.filter(r=>!r.done);
+  const timed=active.filter(r=>r.due_at).sort((a,b)=>new Date(a.due_at)-new Date(b.due_at));
+  const general=active.filter(r=>!r.due_at);
+
+  emptyEl.style.display = active.length? "none":"block";
+
+  if(timed.length){ addChip("Upcoming"); timed.forEach(addBubble); }
+  if(general.length){ addChip("Anytime"); general.forEach(addBubble); }
+  scheduleChecks(timed);
+}
+function addChip(label){
+  const c=document.createElement("div");c.className="section-chip";c.textContent=label;listEl.appendChild(c);
+}
+function addBubble(r){
+  const b=document.createElement("div");
+  b.className="bubble"+(r.due_at?" timed":"");
+  b.dataset.id=r.id;
+  const due = r.due_at? `<span class="due"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H7v-2h4V6h2v7z"/></svg>${fmtDue(r.due_at)}</span>`:"";
+  b.innerHTML=`
+    <div style="display:flex;align-items:flex-start;">
+      <div style="flex:1;min-width:0;">
+        <div class="txt"></div>
+        <div class="meta">${due}</div>
+      </div>
+      <button class="tick" aria-label="Mark done">
+        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+    </div>`;
+  b.querySelector(".txt").textContent=r.text;
+  b.querySelector(".tick").addEventListener("click",()=>complete(r.id,b));
+  listEl.appendChild(b);
+}
+async function complete(id,node){
+  node.classList.add("done","leaving");
+  const rec=cache.find(x=>x.id===id);
+  await Store.update(id,{done:true,done_at:new Date().toISOString()});
+  if(rec&&rec.google_event_id) unsyncCalendar(rec);   // remove from Google Calendar
+  setTimeout(refresh,300);
+}
+
+/* ---------- Google Calendar sync (via Supabase Edge Function) ---------- */
+function calHeaders(){
+  const h={"Content-Type":"application/json"};
+  if(CONFIG.SUPABASE_ANON_KEY) h["Authorization"]="Bearer "+CONFIG.SUPABASE_ANON_KEY;
+  return h;
+}
+async function syncCalendar(rec){
+  if(!CONFIG.CALENDAR_SYNC_URL||!rec.due_at) return;
+  try{
+    const res=await fetch(CONFIG.CALENDAR_SYNC_URL,{method:"POST",headers:calHeaders(),
+      body:JSON.stringify({action:"upsert",id:rec.id,text:rec.text,due_at:rec.due_at,event_id:rec.google_event_id||null})});
+    const j=await res.json();
+    if(j.eventId) await Store.update(rec.id,{google_event_id:j.eventId});
+  }catch(e){console.error("calendar sync",e);}
+}
+async function unsyncCalendar(rec){
+  if(!CONFIG.CALENDAR_SYNC_URL||!rec.google_event_id) return;
+  try{
+    await fetch(CONFIG.CALENDAR_SYNC_URL,{method:"POST",headers:calHeaders(),
+      body:JSON.stringify({action:"delete",event_id:rec.google_event_id})});
+  }catch(e){console.error(e);}
+}
+
+/* ============================================================
+   COMPOSER  —  type / send  &  tap-to-record (locked, WhatsApp-style)
+   ============================================================ */
+const field=$("#field"), mainbtn=$("#mainbtn"),
+      icMic=$("#ic-mic"), icSend=$("#ic-send"),
+      inputwrap=$("#inputwrap"), recwrap=$("#recwrap"),
+      composer=$("#composer");
+
+function autogrow(){field.style.height="auto";field.style.height=Math.min(field.scrollHeight,120)+"px";}
+function toggleBtn(){
+  const hasText=field.value.trim().length>0;
+  icMic.classList.toggle("hidden",hasText);
+  icSend.classList.toggle("hidden",!hasText);
+  mainbtn.setAttribute("aria-label",hasText?"Send":"Record");
+}
+field.addEventListener("input",()=>{autogrow();toggleBtn();});
+field.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendText();}
+});
+
+/* buckets: default fire-times */
+let selectedBucket="untimed";
+function bucketDue(bucket){
+  const now=new Date();
+  const at=h=>{const d=new Date(now);d.setHours(h,0,0,0);if(d<=now)d.setDate(d.getDate()+1);return d;};
+  if(bucket==="home")return at(9);      // things to do at home → 9am
+  if(bucket==="chabad")return at(15);   // things to take to Chabad → 3pm
+  const noon=new Date(now);noon.setHours(12,0,0,0);   // untimed → noon today or tomorrow
+  if(now>=noon)noon.setDate(noon.getDate()+1);
+  return noon;
+}
+function paintChips(){document.querySelectorAll("#buckets .chip").forEach(c=>c.classList.toggle("selected",c.dataset.bucket===selectedBucket));}
+function resetBucket(){selectedBucket="untimed";paintChips();}
+document.querySelectorAll("#buckets .chip").forEach(c=>c.addEventListener("click",()=>{selectedBucket=c.dataset.bucket;paintChips();}));
+
+async function addFromText(raw){
+  const parsed=parseTime(raw);
+  if(!parsed.dueAt) parsed.dueAt=bucketDue(selectedBucket).toISOString();  // no explicit time → bucket default
+  await Store.add(parsed);
+  resetBucket();
+  await refresh();
+  toast("Reminder set • "+fmtDue(parsed.dueAt));
+}
+
+async function sendText(){
+  const raw=field.value.trim();
+  if(!raw)return;
+  field.value="";autogrow();toggleBtn();
+  await addFromText(raw);
+}
+
+/* recording */
+let recognizing=false, mediaRec=null, chunks=[], recTimer=null, recStart=0, recognition=null, liveText="";
+
+mainbtn.addEventListener("click",()=>{
+  if(field.value.trim()){ sendText(); return; }
+  if(!recognizing){ startRecording(); } else { finishRecording(); }
+});
+$("#rec-cancel").addEventListener("click",cancelRecording);
+
+function showRec(on){
+  recwrap.classList.toggle("hidden",!on);
+  inputwrap.classList.toggle("hidden",on);
+  composer.classList.toggle("recording",on);
+  icMic.classList.toggle("hidden",on);       // show send icon while recording
+  icSend.classList.toggle("hidden",!on);
+  mainbtn.setAttribute("aria-label",on?"Send":"Record");
+}
+function tickTime(){
+  const s=Math.floor((Date.now()-recStart)/1000);
+  $("#rec-time").textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+}
+
+async function startRecording(){
+  recognizing=true; liveText=""; showRec(true);
+  recStart=Date.now(); tickTime(); recTimer=setInterval(tickTime,500);
+
+  const canWhisper = !!CONFIG.TRANSCRIBE_URL;
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+
+  if(canWhisper){
+    // record audio, transcribe via Edge Function on send
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      chunks=[];
+      mediaRec=new MediaRecorder(stream);
+      mediaRec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+      mediaRec.onstop=()=>stream.getTracks().forEach(t=>t.stop());
+      mediaRec.start();
+    }catch(err){ toast("Mic blocked"); cancelRecording(); }
+  } else if(SR){
+    // free live dictation fallback
+    recognition=new SR();
+    recognition.continuous=true; recognition.interimResults=true; recognition.lang="en-US";
+    recognition.onresult=e=>{
+      let final="";
+      for(let i=0;i<e.results.length;i++){ if(e.results[i].isFinal) final+=e.results[i][0].transcript+" "; }
+      if(final) liveText=final.trim();
+      const interim=e.results[e.results.length-1][0].transcript;
+      $("#rec-hint").textContent=(liveText||interim||"listening…").slice(-40);
+    };
+    recognition.onerror=()=>{};
+    try{ recognition.start(); }catch(e){}
+  } else {
+    toast("Voice not supported here — type instead");
+    cancelRecording();
+  }
+}
+
+function stopTimer(){clearInterval(recTimer);recTimer=null;recognizing=false;}
+
+async function finishRecording(){
+  if(!recognizing)return;
+  stopTimer(); showRec(false); $("#rec-hint").textContent="recording…";
+  if(mediaRec){                                   // Whisper path
+    const done=new Promise(res=>{mediaRec.addEventListener("stop",res,{once:true});});
+    mediaRec.stop(); await done;
+    const blob=new Blob(chunks,{type:mediaRec.mimeType||"audio/webm"});
+    toast("Transcribing…");
+    const text=await transcribe(blob);
+    if(text) await saveVoice(text); else toast("Couldn't transcribe");
+    mediaRec=null;
+  } else if(recognition){                          // live path
+    recognition.stop(); recognition=null;
+    await new Promise(r=>setTimeout(r,250));
+    if(liveText) await saveVoice(liveText); else toast("Didn't catch that");
+  }
+}
+function cancelRecording(){
+  stopTimer(); showRec(false); $("#rec-hint").textContent="recording…";
+  if(mediaRec){try{mediaRec.stop();}catch(e){}mediaRec=null;}
+  if(recognition){try{recognition.stop();}catch(e){}recognition=null;}
+  chunks=[];liveText="";
+}
+async function saveVoice(text){ await addFromText(text); }
+
+async function transcribe(blob){
+  try{
+    const fd=new FormData();
+    fd.append("file",blob,"note.webm");
+    const headers={};
+    if(CONFIG.SUPABASE_ANON_KEY) headers["Authorization"]="Bearer "+CONFIG.SUPABASE_ANON_KEY;
+    const res=await fetch(CONFIG.TRANSCRIBE_URL,{method:"POST",headers,body:fd});
+    if(!res.ok) throw new Error(res.status);
+    const j=await res.json();
+    return (j.text||"").trim();
+  }catch(e){console.error(e);return "";}
+}
+
+/* ============================================================
+   NOTIFICATIONS  (in-app / recently-open).  Closed-app push = Supabase cron (see README)
+   ============================================================ */
+const notified=new Set(JSON.parse(localStorage.getItem("notified")||"[]"));
+function saveNotified(){localStorage.setItem("notified",JSON.stringify([...notified]));}
+let checkTimer=null;
+function scheduleChecks(timed){
+  if(checkTimer)clearInterval(checkTimer);
+  if(CONFIG.CALENDAR_SYNC_URL) return;   // Google Calendar sends the alerts instead
+  const run=async()=>{
+    const now=Date.now();
+    for(const r of cache.filter(x=>x.due_at&&!x.done)){
+      const t=new Date(r.due_at).getTime();
+      if(t<=now && !notified.has(r.id)){
+        notified.add(r.id);saveNotified();fire(r);
+      }
+    }
+  };
+  run(); checkTimer=setInterval(run,20000);
+}
+async function fire(r){
+  if(!("Notification" in window)||Notification.permission!=="granted")return;
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();
+    const opts={body:r.text,icon:"./icon-192.png",badge:"./icon-192.png",tag:r.id,vibrate:[120,60,120]};
+    if(reg) reg.showNotification("Reminder",opts); else new Notification("Reminder",opts);
+  }catch(e){}
+}
+async function askNotify(){
+  if(CONFIG.CALENDAR_SYNC_URL) return;   // no in-app alerts needed; Calendar handles it
+  if("Notification" in window && Notification.permission==="default"){
+    try{await Notification.requestPermission();}catch(e){}
+  }
+}
+
+/* ============================================================
+   HISTORY DRAWER
+   ============================================================ */
+$("#history-btn").addEventListener("click",openDrawer);
+$("#drawer-close").addEventListener("click",closeDrawer);
+$("#drawer-bg").addEventListener("click",closeDrawer);
+function openDrawer(){
+  const cut=Date.now()-30*864e5;
+  const done=cache.filter(r=>r.done&&r.done_at&&new Date(r.done_at).getTime()>=cut)
+                  .sort((a,b)=>new Date(b.done_at)-new Date(a.done_at));
+  const h=$("#hist");
+  h.innerHTML = done.length? "" : `<div class="empty" style="display:block">Nothing completed in the last 30 days.</div>`;
+  done.forEach(r=>{
+    const d=document.createElement("div");d.className="hist-item";
+    d.innerHTML=`<div class="txt"></div><div class="when">✓ ${new Date(r.done_at).toLocaleString([], {weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</div>`;
+    d.querySelector(".txt").textContent=r.text;
+    h.appendChild(d);
+  });
+  $("#drawer").classList.add("open");$("#drawer-bg").classList.add("open");
+}
+function closeDrawer(){$("#drawer").classList.remove("open");$("#drawer-bg").classList.remove("open");}
+
+/* ============================================================
+   SHARE TARGET  (audio/text shared from WhatsApp lands here)
+   ============================================================ */
+async function handleShare(){
+  if(!location.search.includes("share-target"))return;
+  history.replaceState({},"",location.pathname);
+  try{
+    const cache=await caches.open("share-inbox");
+    const textRes=await cache.match("shared-text");
+    const fileRes=await cache.match("shared-file");
+    if(fileRes){
+      const blob=await fileRes.blob();
+      await cache.delete("shared-file");
+      toast("Transcribing shared note…");
+      let text="";
+      if(CONFIG.TRANSCRIBE_URL){ text=await transcribe(blob); }
+      if(text){ await saveVoice(text); } else { toast("Add TRANSCRIBE_URL to read voice notes"); }
+    } else if(textRes){
+      const t=(await textRes.text()).trim();
+      await cache.delete("shared-text");
+      if(t){ const p=parseTime(t); await Store.add(p); await refresh();
+             toast(p.dueAt?"Reminder set • "+fmtDue(p.dueAt):"Added"); }
+    }
+  }catch(e){console.error(e);}
+}
+
+/* ============================================================
+   PASSWORD GATE (optional, uses one shared Supabase Auth account)
+   ============================================================ */
+async function gateFlow(){
+  if(!(CONFIG.USE_PASSWORD_GATE && useCloud)) return true;
+  const {data}=await sb.auth.getSession();
+  if(data.session) return true;
+  $("#gate").classList.remove("hidden");
+  return await new Promise(resolve=>{
+    $("#gate-go").addEventListener("click",async()=>{
+      const pass=$("#gate-pass").value;
+      const {error}=await sb.auth.signInWithPassword({email:CONFIG.SHARED_EMAIL,password:pass});
+      if(error){$("#gate-msg").textContent="Wrong password";return;}
+      $("#gate").classList.add("hidden");resolve(true);
+    });
+  });
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+async function boot(){
+  // service worker
+  if("serviceWorker" in navigator){
+    try{ await navigator.serviceWorker.register("./sw.js"); }catch(e){console.warn(e);}
+  }
+  await Store.init();
+  const ok=await gateFlow();
+  if(!ok)return;
+
+  $("#subtitle").textContent = useCloud? "synced" : "on this device";
+  await refresh();
+  Store.subscribe(()=>refresh());
+  await handleShare();
+  await askNotify();
+  toggleBtn();
+}
+boot();
+</script>
+</body>
+</html>
