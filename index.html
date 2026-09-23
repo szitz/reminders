@@ -214,12 +214,12 @@
    Leave SUPABASE_URL empty to run in local-only mode (single device).
    ============================================================ */
 const CONFIG = {
-  SUPABASE_URL: "",            // e.g. https://xxxx.supabase.co
-  SUPABASE_ANON_KEY: "",       // your anon/public key (safe to expose; RLS protects data)
-  TRANSCRIBE_URL: "",          // e.g. https://xxxx.supabase.co/functions/v1/transcribe  (Whisper via Edge Function)
+  SUPABASE_URL: "https://tvzkckxsgvrqqovowybh.supabase.co",            // e.g. https://xxxx.supabase.co
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2emtja3hzZ3ZycXFvdm93eWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjUxODMsImV4cCI6MjEwNTcwMTE4M30.Ec3gxP4e1Ipz50f8nmINniRx5uH9Tq649OYDIr7dIp0",       // your anon/public key (safe to expose; RLS protects data)
+  TRANSCRIBE_URL: "https://tvzkckxsgvrqqovowybh.supabase.co/functions/v1/transcribe",          // e.g. https://xxxx.supabase.co/functions/v1/transcribe  (Whisper via Edge Function)
   USE_PASSWORD_GATE: false,    // set true once you set a shared Supabase Auth account
   SHARED_EMAIL: "",            // the one shared account's email (used with the gate)
-  CALENDAR_SYNC_URL: ""        // e.g. https://xxxx.supabase.co/functions/v1/sync-calendar
+  CALENDAR_SYNC_URL: "https://tvzkckxsgvrqqovowybh.supabase.co/functions/v1/sync-calendar"        // e.g. https://xxxx.supabase.co/functions/v1/sync-calendar
                                // timed reminders become Google Calendar events (30-min + at-time alerts)
 };
 
